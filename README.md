@@ -42,6 +42,13 @@ live alert to every connected dashboard over Socket.IO.
 | Database       | SQLite (better-sqlite3)             |
 | AI Service     | Python, FastAPI, YOLOv8, OpenCV     |
 
+## Database
+
+The system stores cameras and detection events in SQLite (via `better-sqlite3`). The
+schema is created automatically on first run and seeded with `npm run seed`. Two tables
+back the whole app — `cameras` and `events` — with severity derived from each threat
+type. See [docs/database.md](docs/database.md) for the full schema and an ER diagram.
+
 ## Project Structure
 
 ```
