@@ -8,7 +8,7 @@ const router = Router();
 
 // Endpoint the AI detection service posts to when it finds a threat.
 // Accepts an optional base64 JPEG which is saved as evidence.
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const { cameraId, threatType, confidence, image } = req.body;
 
   if (!threatType || confidence == null) {
@@ -23,7 +23,7 @@ router.post('/', (req, res) => {
     snapshot = filename;
   }
 
-  const event = recordDetection({
+  const event = await recordDetection({
     cameraId: cameraId || null,
     threatType,
     confidence: Number(confidence),

@@ -4,6 +4,8 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 
 import { PORT, DEMO_MODE, CLIENT_ORIGIN, EVIDENCE_DIR } from './config.js';
+import { initDb } from './db.js';
+import { seedIfEmpty } from './seed.js';
 import { setIO } from './realtime.js';
 import { startSimulator } from './simulator.js';
 
@@ -28,6 +30,18 @@ app.use('/api/analytics', analytics);
 app.use('/api/ingest', ingest);
 app.use('/frames', express.static(EVIDENCE_DIR));
 
+app.get('/', (req, res) => {
+  res.type('html').send(`
+    <h1>ThreatWatch-AI API</h1>
+    <p>This is the backend service. The dashboard runs separately.</p>
+    <ul>
+      <li><a href="/api/health">/api/health</a></li>
+      <li><a href="/api/cameras">/api/cameras</a></li>
+      <li><a href="/api/analytics/summary">/api/analytics/summary</a></li>
+    </ul>
+  `);
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', demoMode: DEMO_MODE });
 });
@@ -37,7 +51,17 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => console.log('Client disconnected:', socket.id));
 });
 
-httpServer.listen(PORT, () => {
-  console.log(`ThreatWatch API listening on http://localhost:${PORT}`);
-  if (DEMO_MODE) startSimulator();
+async function start() {
+  await initDb();
+  await seedIfEmpty();
+
+  httpServer.listen(PORT, '0.0.0.0', () => {
+    console.log(`ThreatWatch API listening on port ${PORT}`);
+    if (DEMO_MODE) startSimulator();
+  });
+}
+
+start().catch((err) => {
+  console.error('Failed to start server:', err);
+  process.exit(1);
 });

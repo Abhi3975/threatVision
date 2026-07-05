@@ -1,39 +1,39 @@
 import { Router } from 'express';
-import db from '../db.js';
+import { query } from '../db.js';
 
 const router = Router();
 
-const listStmt = db.prepare('SELECT * FROM cameras ORDER BY id');
-const getStmt = db.prepare('SELECT * FROM cameras WHERE id = ?');
-const insertStmt = db.prepare(
-  'INSERT INTO cameras (name, location, stream_url, status) VALUES (?, ?, ?, ?)'
-);
-const statusStmt = db.prepare('UPDATE cameras SET status = ? WHERE id = ?');
-const deleteStmt = db.prepare('DELETE FROM cameras WHERE id = ?');
-
-router.get('/', (req, res) => {
-  res.json(listStmt.all());
+router.get('/', async (req, res) => {
+  const { rows } = await query('SELECT * FROM cameras ORDER BY id');
+  res.json(rows);
 });
 
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const { name, location, streamUrl } = req.body;
   if (!name) return res.status(400).json({ error: 'Camera name is required' });
 
-  const info = insertStmt.run(name, location || '', streamUrl || '', 'online');
-  res.status(201).json(getStmt.get(info.lastInsertRowid));
+  const { rows } = await query(
+    `INSERT INTO cameras (name, location, stream_url, status)
+     VALUES ($1, $2, $3, 'online') RETURNING *`,
+    [name, location || '', streamUrl || '']
+  );
+  res.status(201).json(rows[0]);
 });
 
-router.patch('/:id/status', (req, res) => {
+router.patch('/:id/status', async (req, res) => {
   const { status } = req.body;
   if (!['online', 'offline'].includes(status)) {
     return res.status(400).json({ error: 'Status must be online or offline' });
   }
-  statusStmt.run(status, req.params.id);
-  res.json(getStmt.get(req.params.id));
+  const { rows } = await query(
+    'UPDATE cameras SET status = $1 WHERE id = $2 RETURNING *',
+    [status, req.params.id]
+  );
+  res.json(rows[0]);
 });
 
-router.delete('/:id', (req, res) => {
-  deleteStmt.run(req.params.id);
+router.delete('/:id', async (req, res) => {
+  await query('DELETE FROM cameras WHERE id = $1', [req.params.id]);
   res.status(204).end();
 });
 

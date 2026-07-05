@@ -1,43 +1,44 @@
 import { Router } from 'express';
-import db from '../db.js';
+import { query } from '../db.js';
 
 const router = Router();
 
-router.get('/summary', (req, res) => {
-  const totalEvents = db.prepare('SELECT COUNT(*) AS n FROM events').get().n;
-  const critical = db
-    .prepare("SELECT COUNT(*) AS n FROM events WHERE severity = 'critical'").get().n;
-  const camerasOnline = db
-    .prepare("SELECT COUNT(*) AS n FROM cameras WHERE status = 'online'").get().n;
-  const camerasTotal = db.prepare('SELECT COUNT(*) AS n FROM cameras').get().n;
+router.get('/summary', async (req, res) => {
+  const totals = await query(`
+    SELECT
+      (SELECT COUNT(*)::int FROM events) AS total_events,
+      (SELECT COUNT(*)::int FROM events WHERE severity = 'critical') AS critical,
+      (SELECT COUNT(*)::int FROM cameras WHERE status = 'online') AS cameras_online,
+      (SELECT COUNT(*)::int FROM cameras) AS cameras_total
+  `);
 
-  const byType = db
-    .prepare('SELECT threat_type, COUNT(*) AS count FROM events GROUP BY threat_type ORDER BY count DESC')
-    .all();
+  const byType = await query(
+    'SELECT threat_type, COUNT(*)::int AS count FROM events GROUP BY threat_type ORDER BY count DESC'
+  );
 
-  const bySeverity = db
-    .prepare('SELECT severity, COUNT(*) AS count FROM events GROUP BY severity')
-    .all();
+  const bySeverity = await query(
+    'SELECT severity, COUNT(*)::int AS count FROM events GROUP BY severity'
+  );
 
   // Detections grouped by hour for the last 24 hours.
-  const timeline = db
-    .prepare(
-      `SELECT strftime('%Y-%m-%d %H:00', created_at) AS hour, COUNT(*) AS count
-       FROM events
-       WHERE created_at >= datetime('now', '-24 hours')
-       GROUP BY hour
-       ORDER BY hour`
-    )
-    .all();
+  const timeline = await query(`
+    SELECT to_char(date_trunc('hour', created_at), 'YYYY-MM-DD HH24:00') AS hour,
+           COUNT(*)::int AS count
+    FROM events
+    WHERE created_at >= now() - interval '24 hours'
+    GROUP BY 1
+    ORDER BY 1
+  `);
 
+  const t = totals.rows[0];
   res.json({
-    totalEvents,
-    critical,
-    camerasOnline,
-    camerasTotal,
-    byType,
-    bySeverity,
-    timeline,
+    totalEvents: t.total_events,
+    critical: t.critical,
+    camerasOnline: t.cameras_online,
+    camerasTotal: t.cameras_total,
+    byType: byType.rows,
+    bySeverity: bySeverity.rows,
+    timeline: timeline.rows,
   });
 });
 

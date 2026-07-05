@@ -1,36 +1,44 @@
-import Database from 'better-sqlite3';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import pg from 'pg';
+import { DATABASE_URL } from './config.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const db = new Database(path.join(__dirname, '..', 'threatwatch.db'));
+const isLocal = DATABASE_URL.includes('localhost') || DATABASE_URL.includes('127.0.0.1');
 
-db.pragma('journal_mode = WAL');
+const pool = new pg.Pool({
+  connectionString: DATABASE_URL,
+  ssl: isLocal ? false : { rejectUnauthorized: false },
+});
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS cameras (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    location TEXT,
-    stream_url TEXT,
-    status TEXT NOT NULL DEFAULT 'offline',
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-  );
+export function query(text, params) {
+  return pool.query(text, params);
+}
 
-  CREATE TABLE IF NOT EXISTS events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    camera_id INTEGER,
-    threat_type TEXT NOT NULL,
-    severity TEXT NOT NULL,
-    confidence REAL NOT NULL,
-    snapshot TEXT,
-    acknowledged INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (camera_id) REFERENCES cameras (id)
-  );
+export async function initDb() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS cameras (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      location TEXT,
+      stream_url TEXT,
+      status TEXT NOT NULL DEFAULT 'offline',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
 
-  CREATE INDEX IF NOT EXISTS idx_events_created ON events (created_at);
-  CREATE INDEX IF NOT EXISTS idx_events_type ON events (threat_type);
-`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS events (
+      id SERIAL PRIMARY KEY,
+      camera_id INTEGER REFERENCES cameras (id) ON DELETE CASCADE,
+      threat_type TEXT NOT NULL,
+      severity TEXT NOT NULL,
+      confidence REAL NOT NULL,
+      snapshot TEXT,
+      acknowledged BOOLEAN NOT NULL DEFAULT false,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
 
-export default db;
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_events_created ON events (created_at)');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_events_type ON events (threat_type)');
+}
+
+export default pool;

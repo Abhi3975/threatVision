@@ -29,8 +29,11 @@ export function threatLabel(type) {
   return THREAT_LABELS[type] || type;
 }
 
-export function timeAgo(iso) {
-  const then = new Date(iso.replace(' ', 'T') + 'Z');
+export function timeAgo(value) {
+  // Accepts an ISO string (with timezone) or a "YYYY-MM-DD HH:MM:SS" value in UTC.
+  const iso =
+    typeof value === 'string' && !value.includes('T') ? value.replace(' ', 'T') + 'Z' : value;
+  const then = new Date(iso);
   const diff = Math.floor((Date.now() - then.getTime()) / 1000);
   if (diff < 60) return `${diff}s ago`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;

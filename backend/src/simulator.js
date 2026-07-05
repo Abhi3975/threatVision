@@ -1,4 +1,4 @@
-import db from './db.js';
+import { query } from './db.js';
 import { recordDetection } from './detections.js';
 import { generateFrame } from './frame.js';
 import { severityFor } from './threats.js';
@@ -23,27 +23,31 @@ function pick(list) {
 export function startSimulator() {
   console.log('Demo simulator running — generating sample detections');
 
-  setInterval(() => {
-    const cameras = db.prepare("SELECT * FROM cameras WHERE status = 'online'").all();
-    if (cameras.length === 0) return;
+  setInterval(async () => {
+    try {
+      const { rows: cameras } = await query("SELECT * FROM cameras WHERE status = 'online'");
+      if (cameras.length === 0) return;
 
-    const camera = pick(cameras);
-    const threatType = pick(weightedThreats);
-    const confidence = 0.6 + Math.random() * 0.39;
-    const severity = severityFor(threatType);
+      const camera = pick(cameras);
+      const threatType = pick(weightedThreats);
+      const confidence = 0.6 + Math.random() * 0.39;
+      const severity = severityFor(threatType);
 
-    const snapshot = generateFrame({
-      threatType,
-      severity,
-      cameraName: camera.name,
-      confidence,
-    });
+      const snapshot = generateFrame({
+        threatType,
+        severity,
+        cameraName: camera.name,
+        confidence,
+      });
 
-    recordDetection({
-      cameraId: camera.id,
-      threatType,
-      confidence,
-      snapshot,
-    });
+      await recordDetection({
+        cameraId: camera.id,
+        threatType,
+        confidence,
+        snapshot,
+      });
+    } catch (err) {
+      console.error('Simulator error:', err.message);
+    }
   }, 4000);
 }
