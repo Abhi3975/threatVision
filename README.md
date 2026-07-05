@@ -5,6 +5,8 @@ activity using computer vision, and surfaces everything on a security operations
 dashboard. Built as a full-stack project combining a Next.js dashboard, a Node.js
 API with live WebSocket alerts, and a Python detection service running YOLOv8.
 
+**Live demo:** [threatvision-delta.vercel.app](https://threatvision-delta.vercel.app)
+
 ![Dashboard](docs/screenshots/dashboard.png)
 
 ## Features
@@ -143,6 +145,18 @@ want to feed in real footage through the AI service.
 | POST   | `/api/ingest`                  | Detection intake (AI service)  |
 
 The backend also emits an `alert` event over Socket.IO for every new detection.
+
+## Deployment
+
+The project is deployed across Vercel and Railway:
+
+- **Frontend** → Vercel
+- **Backend + AI service** → Railway
+- **Database** → Railway PostgreSQL
+
+The backend reads `DATABASE_URL` and auto-creates its schema and seed data on first
+boot, so a fresh deploy comes up ready to demo. See
+[docs/deployment.md](docs/deployment.md) for the full step-by-step guide.
 
 ## Future Improvements
 

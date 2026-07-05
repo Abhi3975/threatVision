@@ -9,14 +9,13 @@ node_modules/
 frontend/.next/
 frontend/out/
 
-# Database
-backend/*.db
-backend/*.db-shm
-backend/*.db-wal
+# Vercel
+.vercel/
 
 # Captured evidence frames (generated at runtime)
 evidence/*
 !evidence/.gitkeep
+backend/evidence/
 
 # Python
 ai-service/venv/
