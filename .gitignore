@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Env files
+.env
+.env.local
+
+# Build output
+frontend/.next/
+frontend/out/
+
+# Database
+backend/*.db
+backend/*.db-shm
+backend/*.db-wal
+
+# Captured evidence frames (generated at runtime)
+evidence/*
+!evidence/.gitkeep
+
+# Python
+ai-service/venv/
+ai-service/__pycache__/
+ai-service/*.pt
+ai-service/samples/*
+!ai-service/samples/.gitkeep
+
+# OS / editor
+.DS_Store
+*.log
